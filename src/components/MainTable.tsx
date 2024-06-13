@@ -13,10 +13,23 @@ interface MainTableProps {
 }
 
 export default function MainTable({ setTable }: MainTableProps) {
+    // const [type, setType] = useState<Type>(Type.MIN);
+    // const [valuesZ, setValuesZ] = useState<string[]>([]);
+    // const [valuesRestrictions, setValuesRestrictions] = useState<string[][]>([]);
+    // const [restrictionsType, setRestrictionsType] = useState<string[]>([]);
+
     const [type, setType] = useState<Type>(Type.MIN);
-    const [valuesZ, setValuesZ] = useState<string[]>([]);
-    const [valuesRestrictions, setValuesRestrictions] = useState<string[][]>([]);
-    const [restrictionsType, setRestrictionsType] = useState<string[]>([]);
+    const [valuesZ, setValuesZ] = useState<string[]>(['4', '1']);
+    const [valuesRestrictions, setValuesRestrictions] = useState<string[][]>([
+        ['3', '1', '3'],
+        ['4', '3', '6'],
+        ['1', '2', '4']
+    ]);
+    const [restrictionsType, setRestrictionsType] = useState<string[]>([
+        Sign.EQUAL,
+        Sign.GREATER_THAN_EQUAL,
+        Sign.LESS_THAN_EQUAL
+    ]);
 
     const options = [
         { key: "min", label: "Min" },
@@ -90,7 +103,7 @@ export default function MainTable({ setTable }: MainTableProps) {
             type,
             z: valuesZ,
             restrictions: valuesRestrictions,
-            restrictionsType: restrictionsType
+            restrictionsType: restrictionsType,
         }
         setTable(newTable);
     }
