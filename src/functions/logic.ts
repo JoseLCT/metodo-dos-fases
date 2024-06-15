@@ -1,8 +1,9 @@
 import { Sign } from "../enums/sign";
+import { IResult } from "../models/result";
 import { ITable } from "../models/table";
 
 // Paso 1: se verifica si el término independiente de las restricciones es negativo
-export const verificarTerminosIndependientes = (table: ITable) => {
+export const verificarTerminosIndependientes = (table: ITable, addTxtResult: (res: IResult) => void) => {
     table.restrictions.forEach((restriction, index) => {
         const term = restriction.term;
         if (term < 0) {
@@ -20,40 +21,59 @@ export const verificarTerminosIndependientes = (table: ITable) => {
                 default:
                     break;
             }
+            const txtResult: IResult = {
+                message: 'Se multiplica por -1 la restricción ' + (index + 1),
+                table: JSON.parse(JSON.stringify(table)),
+            };
+            addTxtResult(txtResult);
         }
     })
 }
 
 // Paso 2: se agregan las variables artificiales
-export const agregarVariablesArtificiales = (table: ITable) => {
+export const agregarVariablesArtificiales = (table: ITable, addTxtResult: (res: IResult) => void) => {
+    let message = '';
     let e = 1;
     let r = 1;
+    let count = 1;
     table.restrictions.forEach((restriction) => {
         switch (restriction.sign) {
             case Sign.LESS_THAN_EQUAL:
                 restriction.coefficients.push({ variable: `E${e}`, value: 1 });
                 restriction.sign = Sign.EQUAL;
+                message += 'Se agrega la variable de holgura E' + e + ' a la restricción ' + count + '. ';
                 e++;
+                count++;
                 break;
             case Sign.GREATER_THAN_EQUAL:
                 restriction.coefficients.push({ variable: `E${e}`, value: -1 });
                 restriction.coefficients.push({ variable: `R${r}`, value: 1 });
                 restriction.sign = Sign.EQUAL;
+                message += 'Se agrega la variable de exceso -E' + e + ' y la variable de holgura R' + r + ' a la restricción ' + count + '. ';
                 e++;
                 r++;
+                count++;
                 break;
             default:
                 restriction.coefficients.push({ variable: `R${r}`, value: 1 });
+                message += 'Se agrega la variable de holgura R' + r + ' a la restricción ' + count + '. ';
                 r++;
+                count++;
                 break;
         }
     })
+    const txtResult: IResult = {
+        message,
+        table: JSON.parse(JSON.stringify(table)),
+    };
+    addTxtResult(txtResult);
 }
 
 // Paso 3: se genera la matriz
-export const generarMatriz = (table: ITable) => {
+export const generarMatriz = (table: ITable, addTxtResult: (res: IResult) => void) => {
     const matrix: number[][] = [];
     const columnIndicesR: number[] = [];
+    const firstRow: string[] = [];
 
     const quantityVariables = table.z.length;
     const quantityRs = table.restrictions.map((row) => row.coefficients.filter((cell) => cell.variable.includes('R')).length).reduce((acc, curr) => acc + curr, 0);
@@ -99,17 +119,38 @@ export const generarMatriz = (table: ITable) => {
         }
     }
 
+    // Crear la primera fila
+    for (let i = 0; i < quantityVariables; i++) {
+        firstRow.push(`X${i + 1}`);
+    }
+    for (let i = 0; i < quantityEs; i++) {
+        firstRow.push(`E${i + 1}`);
+    }
+    for (let i = 0; i < quantityRs; i++) {
+        firstRow.push(`R${i + 1}`);
+    }
+
     // Se agrega la columna 'r' y 'b'
+    firstRow.push('r');
+    firstRow.push('b');
     for (let i = 0; i < matrix.length; i++) {
         matrix[i].push(i === matrix.length - 1 ? 1 : 0);
         matrix[i].push(i === matrix.length - 1 ? 0 : table.restrictions[i].term);
     }
 
+    const txtResult: IResult = {
+        message: 'Se genera la matriz',
+        matrix: JSON.parse(JSON.stringify(matrix)),
+        firstRow: firstRow,
+    };
+
+    addTxtResult(txtResult);
+
     return { matrix, columnIndicesR };
 }
 
 // Paso 4: se convierte la columna en unidad
-export const convertirRColumnaUnidad = (matrix: number[][], columnIndex: number) => {
+export const convertirRColumnaUnidad = (matrix: number[][], columnIndex: number, addTxtResult: (res: IResult) => void) => {
     let rowIndex = -1;
     for (let i = 0; i < matrix.length; i++) {
         if (matrix[i][columnIndex] === 1) {
@@ -123,6 +164,13 @@ export const convertirRColumnaUnidad = (matrix: number[][], columnIndex: number)
         const value2 = matrix[matrix.length - 1][i];
         matrix[matrix.length - 1][i] = value1 + value2;
     }
+
+    const txtResult: IResult = {
+        message: 'Se convierte la columna ' + (columnIndex + 1) + ' en columna unidad',
+        matrix: JSON.parse(JSON.stringify(matrix)),
+    };
+
+    addTxtResult(txtResult);
 }
 
 // Paso 5: se verifica si el valor de 'r' coincide con la suma de las variables 'R'
@@ -146,7 +194,7 @@ export const validarSumaVariablesR = (matrix: number[][], columnIndicesR: number
 }
 
 // Paso 6: se obtiene el índice de la columna con el valor más positivo en la fila de la función objetivo
-export const obtenerIndiceMasPositivo = (matrix: number[][]): number => {
+export const obtenerIndiceMasPositivo = (matrix: number[][], addTxtResult: (res: IResult) => void): number => {
     let index = -1;
     let value = -1;
     const row = matrix[matrix.length - 1];
@@ -157,6 +205,11 @@ export const obtenerIndiceMasPositivo = (matrix: number[][]): number => {
             index = i;
         }
     }
+    const txtResult: IResult = {
+        message: 'Se selecciona la columna ' + (index + 1) + ' con el valor más positivo',
+    };
+
+    addTxtResult(txtResult);
     return index;
 }
 
@@ -175,7 +228,7 @@ export const obtenerIndiceMasNegativo = (matrix: number[][]): number => {
 }
 
 // Paso 7: se obtiene el resultado de la división de la columna 'b' entre la columna seleccionada y se obtiene el índice del pivote
-export const obtenerIndicePivote = (matrix: number[][], columnIndex: number) => {
+export const obtenerIndicePivote = (matrix: number[][], columnIndex: number, addTxtResult: (res: IResult) => void) => {
     const results: string[] = [];
     let rowIndex = -1;
     let value = Number.MAX_SAFE_INTEGER;
@@ -192,21 +245,31 @@ export const obtenerIndicePivote = (matrix: number[][], columnIndex: number) => 
             results.push('∞');
         }
     })
+    const txtResult: IResult = {
+        message: 'Se obtiene el índice del pivote',
+        matrix: JSON.parse(JSON.stringify(matrix)),
+    };
+    addTxtResult(txtResult);
     return { rowIndex, results };
 }
 
 // Paso 8: se convierte el pivote en 1 en caso de que no lo sea
-export const convertirPivoteEn1 = (matrix: number[][], rowIndex: number, columnIndex: number) => {
+export const convertirPivoteEn1 = (matrix: number[][], rowIndex: number, columnIndex: number, addTxtResult: (res: IResult) => void) => {
     const value = matrix[rowIndex][columnIndex];
     if (value === 1) return;
     const inverse = 1 / value;
     matrix[rowIndex].forEach((element, i) => {
         matrix[rowIndex][i] = element * inverse;
     })
+    const txtResult: IResult = {
+        message: 'Se convierte el pivote en 1',
+        matrix: JSON.parse(JSON.stringify(matrix)),
+    };
+    addTxtResult(txtResult);
 }
 
 // Paso 9: se convierte en columna unidad
-export const convertirEnColumnaUnidad = (matrix: number[][], rowIndex: number, columnIndex: number) => {
+export const convertirEnColumnaUnidad = (matrix: number[][], rowIndex: number, columnIndex: number, addTxtResult: (res: IResult) => void) => {
     matrix.forEach((row, i) => {
         // Se omite la fila del pivote
         if (i === rowIndex) return;
@@ -215,6 +278,10 @@ export const convertirEnColumnaUnidad = (matrix: number[][], rowIndex: number, c
             matrix[i][j] = element + (value * matrix[rowIndex][j]);
         })
     })
+    const txtResult: IResult = {
+        message: 'Se convierte en columna unidad',
+        matrix: JSON.parse(JSON.stringify(matrix)),
+    };
 }
 
 // Paso 10: se verifica si las columnas 'R' son columna unidad
@@ -268,7 +335,7 @@ export const hayNegativosEnZ = (matrix: number[][]): boolean => {
 }
 
 // Paso 12: se eliminan las columnas 'R' y se obtiene la nueva matriz
-export const obtenerNuevaFormulacion = (matrix: number[][], columnIndicesR: number[], z: number[]): number[][] => {
+export const obtenerNuevaFormulacion = (matrix: number[][], columnIndicesR: number[], z: number[], addTxtResult: (res: IResult) => void) => {
     const newMatrix: number[][] = [];
     matrix.forEach((row) => {
         newMatrix.push(row.filter((element, i) => !columnIndicesR.includes(i)));
@@ -277,10 +344,15 @@ export const obtenerNuevaFormulacion = (matrix: number[][], columnIndicesR: numb
         newMatrix[newMatrix.length - 1][i] = (z[i] ?? 0) * -1;
     }
     newMatrix[newMatrix.length - 1][newMatrix[newMatrix.length - 1].length - 2] = 1;
+    const txtResult: IResult = {
+        message: 'Se obtiene la nueva formulación',
+        matrix: JSON.parse(JSON.stringify(newMatrix)),
+    };
+    addTxtResult(txtResult);
     return newMatrix;
 }
 
-export const obtenerNuevaFormulacionVisual = (matrix: number[][], columnIndicesR: number[], table: ITable) => {
+export const obtenerNuevaFormulacionVisual = (matrix: number[][], columnIndicesR: number[], table: ITable, addTxtResult: (res: IResult) => void) => {
     const quantityVariables = table.z.length;
     const newMatrix: string[][] = [];
     matrix.splice(matrix.length - 1, 1);
@@ -297,6 +369,11 @@ export const obtenerNuevaFormulacionVisual = (matrix: number[][], columnIndicesR
             }
         })
     })
+    const txtResult: IResult = {
+        message: 'Se obtiene la nueva formulación visual',
+        matrix: JSON.parse(JSON.stringify(newMatrix)),
+    };
+    addTxtResult(txtResult);
     return newMatrix;
 }
 
@@ -311,4 +388,12 @@ export const obtenerIndicesX = (matrix: number[][], quantityVariables: number): 
         })
     })
     return indices;
+}
+
+const obtenerMatriz = (matrix: number[][], quantityVariables: number, quantityRs: number, quantityEs: number) => {
+    const newMatrix: number[][] = [];
+    matrix.forEach((row) => {
+        newMatrix.push(row.filter((element, i) => i < quantityVariables + quantityRs + quantityEs));
+    })
+    return newMatrix;
 }

@@ -1,5 +1,5 @@
 import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Input, Select, SelectItem } from "@nextui-org/react";
-import { faEquals, faGreaterThanEqual, faLessThanEqual, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEquals, faGreaterThanEqual, faLessThanEqual, faPlus, faRotateRight, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Sign } from "../enums/sign";
 import { ToastContainer, toast } from 'react-toastify';
@@ -9,11 +9,16 @@ import { ITable } from "../models/table";
 import 'react-toastify/dist/ReactToastify.css';
 
 interface MainTableProps {
-    init: (table: ITable) => void;
+    init: (table: ITable, stepByStep: boolean) => void;
+    cleanInfo: () => void;
 }
 
-export default function MainTable({ init }: MainTableProps) {
-    // const [table, setTable] = useState<ITable>();
+export default function MainTable({ init, cleanInfo }: MainTableProps) {
+    // const [table, setTable] = useState<ITable>({
+    //     type: Type.MIN,
+    //     z: [0, 0],
+    //     restrictions: []
+    // });
 
     const [table, setTable] = useState<ITable>({
         type: Type.MIN,
@@ -51,7 +56,7 @@ export default function MainTable({ init }: MainTableProps) {
         { key: Type.MAX, label: "Max" }
     ];
 
-    const onInit = () => {
+    const onInit = (stepByStep: boolean) => {
         if (table.z.length < 2) {
             toast.error("Debe haber al menos dos variables en Z");
             return;
@@ -64,7 +69,7 @@ export default function MainTable({ init }: MainTableProps) {
             toast.error("Los valores de Z deben ser mayores a 0");
             return;
         }
-        init(table);
+        init(table, stepByStep);
     }
 
     const addVariable = () => {
@@ -72,7 +77,7 @@ export default function MainTable({ init }: MainTableProps) {
         const newTable = { ...table };
         newTable.z.push(0);
         newTable.restrictions.forEach((restriction) => {
-            restriction.coefficients.push({ value: 0, variable: `X${newTable.z.length}`});
+            restriction.coefficients.push({ value: 0, variable: `X${newTable.z.length}` });
         });
         setTable(newTable);
     }
@@ -135,25 +140,53 @@ export default function MainTable({ init }: MainTableProps) {
         setTable(newTable);
     }
 
+    const onClean = () => {
+        setTable({
+            type: Type.MIN,
+            z: [0, 0],
+            restrictions: []
+        });
+        cleanInfo();
+    }
+
+    const onStepByStep = () => {
+        onInit(true);
+    }
+
+    const directResult = () => {
+        onInit(false);
+    }
+
+
     return (
-        <section className="flex flex-col w-1/2">
-            <h2 className='font-bold text-2xl text-center mb-8'>Problema</h2>
+        <section className="flex flex-col w-2/3">
+            <div className="flex gap-4 justify-center">
+                <h2 className='font-bold text-2xl text-center mb-8'>Problema</h2>
+                <Button
+                    color="primary"
+                    variant="ghost"
+                    onClick={onClean}
+                    isIconOnly
+                >
+                    <FontAwesomeIcon icon={faRotateRight} />
+                </Button>
+            </div>
             <div className="flex gap-4 items-center mb-8">
                 <Button
                     color="primary"
                     variant="ghost"
                     className="w-1/2"
-                    onClick={onInit}
+                    onClick={onStepByStep}
                 >
-                    Limpiar
+                    Paso a paso
                 </Button>
                 <Button
                     color="primary"
                     variant="solid"
                     className="w-1/2"
-                    onClick={onInit}
+                    onClick={directResult}
                 >
-                    Resolver
+                    Resultado directo
                 </Button>
             </div>
             <h4 className="mb-1 font-semibold text-small">Variables</h4>
