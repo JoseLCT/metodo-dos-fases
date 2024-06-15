@@ -1,8 +1,19 @@
+import { Sign } from "../enums/sign";
 import { Type } from "../enums/type";
 
-export interface Table {
+export interface ICoefficient {
+    variable: string;
+    value: number;
+}
+
+export interface IRestriction {
+    coefficients: ICoefficient[];
+    sign: Sign;
+    term: number;
+}
+
+export interface ITable {
     type: Type;
-    z: string[];
-    restrictions: string[][];
-    restrictionsType: string[];
+    z: number[];
+    restrictions: IRestriction[];
 }

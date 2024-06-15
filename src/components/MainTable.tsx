@@ -1,125 +1,163 @@
+import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Input, Select, SelectItem } from "@nextui-org/react";
 import { faEquals, faGreaterThanEqual, faLessThanEqual, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Input, Select, SelectItem } from "@nextui-org/react";
 import { Sign } from "../enums/sign";
 import { ToastContainer, toast } from 'react-toastify';
 import { useState } from "react";
-import { Table } from "../models/table";
 import { Type } from "../enums/type";
+import { ITable } from "../models/table";
 import 'react-toastify/dist/ReactToastify.css';
 
 interface MainTableProps {
-    setTable: (table: Table) => void;
+    init: (table: ITable) => void;
 }
 
-export default function MainTable({ setTable }: MainTableProps) {
-    // const [type, setType] = useState<Type>(Type.MIN);
-    // const [valuesZ, setValuesZ] = useState<string[]>([]);
-    // const [valuesRestrictions, setValuesRestrictions] = useState<string[][]>([]);
-    // const [restrictionsType, setRestrictionsType] = useState<string[]>([]);
+export default function MainTable({ init }: MainTableProps) {
+    // const [table, setTable] = useState<ITable>();
 
-    const [type, setType] = useState<Type>(Type.MIN);
-    const [valuesZ, setValuesZ] = useState<string[]>(['4', '1']);
-    const [valuesRestrictions, setValuesRestrictions] = useState<string[][]>([
-        ['3', '1', '3'],
-        ['4', '3', '6'],
-        ['1', '2', '4']
-    ]);
-    const [restrictionsType, setRestrictionsType] = useState<string[]>([
-        Sign.EQUAL,
-        Sign.GREATER_THAN_EQUAL,
-        Sign.LESS_THAN_EQUAL
-    ]);
+    const [table, setTable] = useState<ITable>({
+        type: Type.MIN,
+        z: [4, 1],
+        restrictions: [
+            {
+                coefficients: [
+                    { value: 3, variable: 'X1' },
+                    { value: 1, variable: 'X2' }
+                ],
+                sign: Sign.EQUAL,
+                term: 3
+            },
+            {
+                coefficients: [
+                    { value: 4, variable: 'X1' },
+                    { value: 3, variable: 'X2' }
+                ],
+                sign: Sign.GREATER_THAN_EQUAL,
+                term: 6
+            },
+            {
+                coefficients: [
+                    { value: 1, variable: 'X1' },
+                    { value: 2, variable: 'X2' }
+                ],
+                sign: Sign.LESS_THAN_EQUAL,
+                term: 4
+            }
+        ],
+    });
 
     const options = [
-        { key: "min", label: "Min" },
-        { key: "max", label: "Max" },
+        { key: Type.MIN, label: "Min" },
+        { key: Type.MAX, label: "Max" }
     ];
 
-    const addVariable = () => {
-        if (valuesZ.length >= 5) return;
-        const newValues = [...valuesZ];
-        newValues.push('0');
-        setValuesZ(newValues);
-
-        const newValuesRestrictions = [...valuesRestrictions];
-        newValuesRestrictions.forEach((restriction) => {
-            restriction.push('0')
-        });
-        setValuesRestrictions(newValuesRestrictions);
-    }
-
-    const deleteVariable = () => {
-        if (valuesZ.length <= 1) return;
-        const newValues = [...valuesZ];
-        newValues.pop();
-        setValuesZ(newValues);
-
-        const newValuesRestrictions = [...valuesRestrictions];
-        newValuesRestrictions.forEach((restriction) => {
-            restriction.pop();
-        });
-        setValuesRestrictions(newValuesRestrictions);
-    }
-
-    const addRestriction = () => {
-        if (valuesRestrictions.length >= 5) return;
-        const newValues = [...valuesRestrictions];
-
-        newValues.push(valuesZ.map(() => '0'));
-        newValues[valuesRestrictions.length].push('0');
-        setValuesRestrictions(newValues);
-
-        const newRestrictionsType = [...restrictionsType];
-        newRestrictionsType.push("=");
-        setRestrictionsType(newRestrictionsType);
-    }
-
-    const deleteRestriction = () => {
-        if (valuesRestrictions.length <= 1) return;
-        const newValues = [...valuesRestrictions];
-        newValues.pop();
-        setValuesRestrictions(newValues);
-
-        const newRestrictionsType = [...restrictionsType];
-        newRestrictionsType.pop();
-        setRestrictionsType(newRestrictionsType);
-    }
-
-    const onStart = () => {
-        if (valuesZ.length < 2) {
+    const onInit = () => {
+        if (table.z.length < 2) {
             toast.error("Debe haber al menos dos variables en Z");
             return;
         }
-        if (valuesRestrictions.length < 1) {
+        if (table.restrictions.length < 1) {
             toast.error("Debe haber al menos una restricción");
             return;
         }
-        if (valuesZ.some((value) => parseInt(value) <= 0)) {
+        if (table.z.some((value) => value <= 0)) {
             toast.error("Los valores de Z deben ser mayores a 0");
             return;
         }
-        const newTable: Table = {
-            type,
-            z: valuesZ,
-            restrictions: valuesRestrictions,
-            restrictionsType: restrictionsType,
-        }
+        init(table);
+    }
+
+    const addVariable = () => {
+        if (table.z.length >= 4) return;
+        const newTable = { ...table };
+        newTable.z.push(0);
+        newTable.restrictions.forEach((restriction) => {
+            restriction.coefficients.push({ value: 0, variable: `X${newTable.z.length}`});
+        });
+        setTable(newTable);
+    }
+
+    const deleteVariable = () => {
+        if (table.z.length <= 1) return;
+        const newTable = { ...table };
+        newTable.z.pop();
+        newTable.restrictions.forEach((restriction) => {
+            restriction.coefficients.pop();
+        });
+        setTable(newTable);
+    }
+
+    const addRestriction = () => {
+        if (table.restrictions.length >= 4) return;
+        const newTable = { ...table };
+        newTable.restrictions.push({
+            coefficients: table.z.map((value, index) => ({ value: 0, variable: `X${index + 1}` })),
+            sign: Sign.EQUAL,
+            term: 0
+        });
+        setTable(newTable);
+    }
+
+    const deleteRestriction = () => {
+        if (table.restrictions.length <= 1) return;
+        const newTable = { ...table };
+        newTable.restrictions.pop();
+        setTable(newTable);
+    }
+
+    const onTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newTable = { ...table };
+        newTable.type = e.target.value === Type.MAX ? Type.MAX : Type.MIN;
+        setTable(newTable);
+    }
+
+    const onZChange = (index: number, value: string) => {
+        const newTable = { ...table };
+        newTable.z[index] = parseInt(value);
+        setTable(newTable);
+    }
+
+    const onCoefficientChange = (rowIndex: number, colIndex: number, value: string) => {
+        const newTable = { ...table };
+        newTable.restrictions[rowIndex].coefficients[colIndex].value = parseInt(value);
+        setTable(newTable);
+    }
+
+    const onSignChange = (index: number, value: Sign) => {
+        const newTable = { ...table };
+        newTable.restrictions[index].sign = value;
+        setTable(newTable);
+    }
+
+    const onTermChange = (index: number, value: string) => {
+        const newTable = { ...table };
+        newTable.restrictions[index].term = parseInt(value);
         setTable(newTable);
     }
 
     return (
-        <section className="flex flex-col items-center">
-            <Button
-                color="success"
-                variant="shadow"
-                className="mb-8"
-                onClick={onStart}
-            >
-                Comenzar
-            </Button>
-            <h4 className="mb-2 font-semibold">Variables</h4>
-            <div className="flex justify-end space-x-4 mb-6">
+        <section className="flex flex-col w-1/2">
+            <h2 className='font-bold text-2xl text-center mb-8'>Problema</h2>
+            <div className="flex gap-4 items-center mb-8">
+                <Button
+                    color="primary"
+                    variant="ghost"
+                    className="w-1/2"
+                    onClick={onInit}
+                >
+                    Limpiar
+                </Button>
+                <Button
+                    color="primary"
+                    variant="solid"
+                    className="w-1/2"
+                    onClick={onInit}
+                >
+                    Resolver
+                </Button>
+            </div>
+            <h4 className="mb-1 font-semibold text-small">Variables</h4>
+            <div className="flex gap-4 mb-6">
                 <Button
                     color="primary"
                     isIconOnly
@@ -135,12 +173,12 @@ export default function MainTable({ setTable }: MainTableProps) {
                     <FontAwesomeIcon icon={faTrash} />
                 </Button>
             </div>
-            <div className="flex items-center justify-center space-x-6 mb-12">
+            <div className="flex gap-4 mb-12">
                 <Select
                     items={options}
                     className="w-20"
                     defaultSelectedKeys={["min"]}
-                    onChange={(e) => setType(e.target.value as Type)}
+                    onChange={onTypeChange}
                 >
                     {options.map((item) =>
                         <SelectItem key={item.key} value={item.key}>
@@ -149,30 +187,27 @@ export default function MainTable({ setTable }: MainTableProps) {
                     )}
                 </Select>
                 <span className="text-2xl">Z =</span>
-                {valuesZ.map((value, index) => (
-                    <div key={`zr-${index}`} className="flex items-center space-x-6">
-                        <div className="flex items-center space-x-2">
+                <div className="flex gap-8">
+                    {table.z.map((value, index) => (
+                        <div key={`z-r-${index}`} className="flex items-center gap-2">
                             <Input
-                                key={`zv-${index}`}
+                                key={`z-v-${index}`}
                                 type="number"
                                 className="w-20"
                                 value={value.toString()}
-                                onChange={(e) => {
-                                    const newValues = [...valuesZ];
-                                    newValues[index] = e.target.value;
-                                    setValuesZ(newValues);
-                                }} />
+                                onChange={(e) => onZChange(index, e.target.value)} />
                             <div className="relative">
                                 <span>X</span>
                                 <span className="absolute bottom-0 right-[-10px] text-xs">
-                                    {index + 1}</span>
+                                    {index + 1}
+                                </span>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
-            <h4 className="mb-2 font-semibold">Restricciones</h4>
-            <div className="flex justify-end space-x-4 mb-6">
+            <h4 className="mb-1 font-semibold text-small">Restricciones</h4>
+            <div className="flex gap-4 mb-6">
                 <Button
                     color="primary"
                     isIconOnly
@@ -188,54 +223,48 @@ export default function MainTable({ setTable }: MainTableProps) {
                     <FontAwesomeIcon icon={faTrash} />
                 </Button>
             </div>
-            <div className="flex flex-col items-center space-y-6">
-                {valuesRestrictions.map((row, rowIndex) => (
-                    <div key={`r-${rowIndex}`} className="flex items-center space-x-6">
-                        <span className="text-2xl">R{rowIndex + 1}:</span>
-                        {row.map((col, colIndex) => (
-                            <div key={`r-${rowIndex}-c-${colIndex}`} className="flex items-center space-x-6">
-                                {colIndex === valuesZ.length && (
-                                    <Dropdown
-                                        title="Signo"
-                                    >
-                                        <DropdownTrigger>
-                                            <Button color="default" isIconOnly>
-                                                <FontAwesomeIcon icon={restrictionsType[rowIndex] === "<=" ? faLessThanEqual : restrictionsType[rowIndex] === Sign.GREATER_THAN_EQUAL ? faGreaterThanEqual : faEquals} />
-                                            </Button>
-                                        </DropdownTrigger>
-                                        <DropdownMenu>
-                                            {Object.values(Sign).map((item) =>
-                                                <DropdownItem key={item} value={item} onClick={() => {
-                                                    const newRestrictionsType = [...restrictionsType];
-                                                    newRestrictionsType[rowIndex] = item;
-                                                    setRestrictionsType(newRestrictionsType);
-                                                }}>
-                                                    <FontAwesomeIcon icon={item === Sign.EQUAL ? faEquals : item === Sign.LESS_THAN_EQUAL ? faLessThanEqual : faGreaterThanEqual} />
-                                                </DropdownItem>
-                                            )}
-                                        </DropdownMenu>
-                                    </Dropdown>
-                                )}
-                                <div className="flex items-center space-x-2">
-                                    <Input
-                                        key={`r-${rowIndex}-c-${colIndex}-input`}
-                                        type="number"
-                                        className="w-20"
-                                        value={col.toString()}
-                                        onChange={(e) => {
-                                            const newValuesRestrictions = [...valuesRestrictions];
-                                            newValuesRestrictions[rowIndex][colIndex] = e.target.value;
-                                            setValuesRestrictions(newValuesRestrictions);
-                                        }} />
-                                    {colIndex < valuesZ.length && (
-                                        <div className="relative">
-                                            <span>X</span>
-                                            <span className="absolute bottom-0 right-[-10px] text-xs">{colIndex + 1}</span>
-                                        </div>
-                                    )}
+            <div className="flex flex-col space-y-6">
+                {table.restrictions.map((row, rowIndex) => (
+                    <div key={`r-${rowIndex}`} className="flex gap-8">
+                        {row.coefficients.map((col, colIndex) => (
+                            <div key={`r-${rowIndex}-c-${colIndex}`} className="flex items-center gap-2">
+                                <Input
+                                    key={`r-${rowIndex}-c-${colIndex}-input`}
+                                    type="number"
+                                    className="w-20"
+                                    value={col.value.toString()}
+                                    onChange={(e) => onCoefficientChange(rowIndex, colIndex, e.target.value)}
+                                />
+                                <div className="relative">
+                                    <span>X</span>
+                                    <span className="absolute bottom-0 right-[-10px] text-xs">{colIndex + 1}</span>
                                 </div>
                             </div>
                         ))}
+                        <Dropdown title="Signo">
+                            <DropdownTrigger>
+                                <Button color="default" isIconOnly>
+                                    {row.sign === Sign.EQUAL && <FontAwesomeIcon icon={faEquals} />}
+                                    {row.sign === Sign.LESS_THAN_EQUAL && <FontAwesomeIcon icon={faLessThanEqual} />}
+                                    {row.sign === Sign.GREATER_THAN_EQUAL && <FontAwesomeIcon icon={faGreaterThanEqual} />}
+                                </Button>
+                            </DropdownTrigger>
+                            <DropdownMenu>
+                                {Object.values(Sign).map((item) =>
+                                    <DropdownItem key={item} value={item} onClick={() => onSignChange(rowIndex, item)}>
+                                        {item === Sign.EQUAL && <FontAwesomeIcon icon={faEquals} />}
+                                        {item === Sign.LESS_THAN_EQUAL && <FontAwesomeIcon icon={faLessThanEqual} />}
+                                        {item === Sign.GREATER_THAN_EQUAL && <FontAwesomeIcon icon={faGreaterThanEqual} />}
+                                    </DropdownItem>
+                                )}
+                            </DropdownMenu>
+                        </Dropdown>
+                        <Input
+                            type="number"
+                            className="w-20"
+                            value={row.term.toString()}
+                            onChange={(e) => onTermChange(rowIndex, e.target.value)}
+                        />
                     </div>
                 ))}
             </div>
