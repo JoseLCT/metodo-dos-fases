@@ -282,6 +282,7 @@ export const convertirEnColumnaUnidad = (matrix: number[][], rowIndex: number, c
         message: 'Se convierte en columna unidad',
         matrix: JSON.parse(JSON.stringify(matrix)),
     };
+    addTxtResult(txtResult);
 }
 
 // Paso 10: se verifica si las columnas 'R' son columna unidad
@@ -388,12 +389,4 @@ export const obtenerIndicesX = (matrix: number[][], quantityVariables: number): 
         })
     })
     return indices;
-}
-
-const obtenerMatriz = (matrix: number[][], quantityVariables: number, quantityRs: number, quantityEs: number) => {
-    const newMatrix: number[][] = [];
-    matrix.forEach((row) => {
-        newMatrix.push(row.filter((element, i) => i < quantityVariables + quantityRs + quantityEs));
-    })
-    return newMatrix;
 }
