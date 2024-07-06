@@ -150,11 +150,33 @@ export default function MainTable({ init, cleanInfo }: MainTableProps) {
     }
 
     const onStepByStep = () => {
+        if (verifyInputs() === false) {
+            return;
+        }
         onInit(true);
     }
 
     const directResult = () => {
+        if (verifyInputs() === false) {
+            return;
+        }
         onInit(false);
+    }
+
+    const verifyInputs = () => {
+        if (table.z.length < 2) {
+            toast.error("Debe haber al menos dos variables en Z");
+            return false;
+        }
+        if (table.restrictions.length < 1) {
+            toast.error("Debe haber al menos una restricción");
+            return false;
+        }
+        if (table.z.some((value) => value <= 0)) {
+            toast.error("Los valores de Z deben ser mayores a 0");
+            return false;
+        }
+        return true;
     }
 
 
